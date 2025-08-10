@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:13
+    container_name: smartorder-db
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smartorder_net
+
+  rasa:
+    build:
+      context: ./rasa
+    container_name: smartorder-rasa
+    depends_on:
+      - db
+      - action_server
+    ports:
+      - "5005:5005"
+    entrypoint: ["bash", "-c"]
+    command: >
+      "rasa train && rasa run --enable-api --cors '*' --debug"
+    volumes:
+      - ./rasa:/app
+      - ./rasa/models:/app/models
+    environment:
+      - XDG_CACHE_HOME=/app/.rasa
+    networks:
+      - smartorder_net
+
+  action_server:
+    build:
+      context: ./rasa
+      dockerfile: actions/Dockerfile
+    container_name: smartorder-action_server
+    ports:
+      - "5055:5055"
+    volumes:
+      - ./rasa:/app
+    networks:
+      - smartorder_net
+
+volumes:
+  postgres_data:
+
+networks:
+  smartorder_net:
+    driver: bridge
+
